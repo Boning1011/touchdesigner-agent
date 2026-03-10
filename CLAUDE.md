@@ -97,4 +97,4 @@ Built-ins: `TDIndex()`, `TDNumElements()`, `TDIn_P()`, `TDIn_Cd()`, `TDIn_v()`.
 - TD must have the TCP/IP DAT running in Server mode before the agent can connect
 - GLSL TOPs reference shader code via Text DATs or File In DATs, not direct file paths
 - **Prefer file-based workflow**: use `setup_shader()` to create local files with TD sync, so all code lives in Git
-- **Auto-commit & push after modifying external repo files.** This tool often writes files (shaders, configs, etc.) into other Git repos (the user's TD project). After changes are verified working, automatically `git add` + `git commit` + `git push` in that external repo so it stays in sync. Do not ask — just do it as part of the workflow.
+- **Auto-commit & push the user's TD project repo after changes are verified working.** The TD project lives in its own Git repo (query `project.folder` in TD to find the path). After modifying anything via the bridge (GLSL, parameters, nodes, etc.), automatically `git add` + `git commit` + `git push` in **that TD project repo** — not this tool repo. Do not ask — just do it as part of the workflow.
