@@ -79,6 +79,47 @@ class TDClient:
             raise RuntimeError(resp["error"])
         return resp
 
+    def setup_shader(self, name: str, project_dir: str | Path,
+                     initial_code: str = "",
+                     parent: str = "/project1") -> dict:
+        """Create a local .glsl file and a synced Text DAT in TD.
+
+        Does three things automatically:
+        1. Creates  {project_dir}/shaders/{name}.glsl  with initial_code
+        2. Creates a Text DAT in TD pointing to that file
+        3. Enables sync so TD auto-reloads on every file save
+
+        Args:
+            name: Shader name (e.g. 'particle_compute'). Used for both
+                  the filename and the DAT node name.
+            project_dir: Root directory of the user's TD project. The shader
+                         file will be created under {project_dir}/shaders/.
+            initial_code: GLSL source to write. Defaults to an empty stub.
+            parent: TD parent COMP path. Defaults to '/project1'.
+
+        Returns:
+            dict with 'file_path' (local) and 'dat_path' (in TD).
+        """
+        # 1. Create local file in the project's shaders/ folder
+        shaders_dir = Path(project_dir) / "shaders"
+        shaders_dir.mkdir(parents=True, exist_ok=True)
+        file_path = shaders_dir / f"{name}.glsl"
+        if not initial_code:
+            initial_code = f"// {name}\n"
+        file_path.write_text(initial_code, encoding="utf-8")
+
+        # 2. Create Text DAT in TD → point to file → enable sync
+        abs_path = str(file_path.resolve()).replace("\\", "/")
+        dat_name = name.replace("-", "_").replace(" ", "_")
+        self.execute(
+            f"n = op('{parent}').create(textDAT, '{dat_name}'); "
+            f"n.par.file = '{abs_path}'; "
+            f"n.par.syncfile = 1"
+        )
+
+        dat_path = f"{parent}/{dat_name}"
+        return {"file_path": str(file_path), "dat_path": dat_path}
+
     def write_glsl(self, dat_path: str, code: str) -> dict:
         """Write GLSL code directly into a Text/DAT node, then return compile info.
 

@@ -46,15 +46,32 @@ print(result["errors"])  # compile error string if any
 
 ## GLSL Workflow
 
-There are two ways to get shader code into TD:
+All shader code lives as local `.glsl` files in a `shaders/` folder inside your **TD project directory** — synced to TD automatically. This way everything stays in Git and can be edited by any tool (other AIs, text editors, etc.) without opening TD.
 
-### Direct Write (recommended for agent workflows)
-The agent writes GLSL code directly into a Text DAT via `td.write_glsl()`. Fastest iteration loop — no files on disk.
+### One-command setup
+```python
+# Creates {project_dir}/shaders/particle_compute.glsl + a synced Text DAT in TD
+td.setup_shader('particle_compute', project_dir='C:/Projects/my_td_project', initial_code="""
+void main() {
+    // your GLSL here
+}
+""")
+```
 
-### File-Based (for version control)
-1. Agent writes `.glsl` files to the `shaders/` directory
-2. TD uses **File In DAT** nodes pointing to those files
-3. Agent calls `td.glsl_check()` which auto-refreshes the File In DATs and returns compile status
+This does three things:
+1. Creates `shaders/particle_compute.glsl` in your project directory
+2. Creates a Text DAT (`particle_compute`) in TD pointing to that file
+3. Enables **sync mode** — TD auto-reloads whenever the file changes
+
+### Editing later
+```python
+# Just write to the file — TD picks up changes automatically
+td.write_glsl_file('C:/Projects/my_td_project/shaders/particle_compute.glsl', new_code)
+
+# Check if it compiles
+result = td.glsl_check('/project1/glsl1')
+print(result["ok"], result["errors"])
+```
 
 ## Protocol
 
@@ -73,7 +90,6 @@ bridge/
   client.py           # Python client for external agents
 td-setup/
   callbacks.py        # Paste into TD's Text DAT
-shaders/              # Optional: external .glsl files
 CLAUDE.md             # Agent instructions
 ```
 
