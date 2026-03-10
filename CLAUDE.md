@@ -43,9 +43,58 @@ bridge/client.py      — Python client (used by agent)
 td-setup/callbacks.py — Paste into TD's Text DAT
 ```
 
+## GLSL POP Pitfalls
+
+### Output attributes must be enabled before writing
+`P[id] = ...` requires the attribute listed in the node's **Output Attributes** (`par.outputattrs`). If empty, shader gets `undeclared identifier`.
+```python
+td.execute("op(path).par.outputattrs = 'P'")       # single
+td.execute("op(path).par.outputattrs = 'P Cd v'")   # multiple, space-separated
+```
+
+### P is vec3, not vec4
+`P[id] = vec4(...)` fails with type mismatch. Always `P[id] = vec3(x, y, z);`.
+
+### Float uniforms: use Vectors page, not Constants
+**Constants** page passes `int` to the shader. For `float`, use **Vectors** (`vec0name` / `vec0valuex`). Arrives as `vec4` in shader — access with `.x`.
+```python
+td.execute("op(path).par.vec0name = 'uMyFloat'")
+td.execute("op(path).par.vec0valuex.mode = ParMode.EXPRESSION")
+td.execute("op(path).par.vec0valuex.expr = 'absTime.seconds % 100'")
+```
+Shader: `float t = uMyFloat.x;`
+
+### Keep time values small — avoid float precision loss
+`absTime.seconds` grows forever. Large values (1000+) × wave frequencies lose sub-frame precision in 32-bit GLSL → visible stuttering. Always mod in the Python expression: `'absTime.seconds % 100'`.
+
+### Never redeclare TD auto-generated uniforms
+TD generates `uniform` declarations from parameter pages automatically. Writing `uniform vec4 uTime;` in the shader when a parameter named `uTime` exists → `redefinition` error. Just use the name directly.
+
+### Cleaning up uniform parameters: reset all three fields
+Setting sequence count to 0 does NOT clear names or running expressions. Always reset name, mode, and value:
+```python
+td.execute("op(path).par.vec0name = ''")
+td.execute("op(path).par.vec0valuex.mode = ParMode.CONSTANT")
+td.execute("op(path).par.vec0valuex = 0")
+```
+
+### Minimal POP GLSL template
+```glsl
+void main() {
+    const uint id = TDIndex();
+    if(id >= TDNumElements())
+        return;
+    vec3 inP = TDIn_P().xyz;
+    // ... compute ...
+    P[id] = vec3(...);
+}
+```
+Built-ins: `TDIndex()`, `TDNumElements()`, `TDIn_P()`, `TDIn_Cd()`, `TDIn_v()`.
+
 ## Rules
 - All communication is localhost TCP (default port 7000, but the user may change it per scene)
 - **Before connecting or making any changes, always ask the user which port and which TD scene they're working in.** Multiple scenes may be open at once, each on a different port.
 - TD must have the TCP/IP DAT running in Server mode before the agent can connect
 - GLSL TOPs reference shader code via Text DATs or File In DATs, not direct file paths
 - **Prefer file-based workflow**: use `setup_shader()` to create local files with TD sync, so all code lives in Git
+- **Auto-commit & push after modifying external repo files.** This tool often writes files (shaders, configs, etc.) into other Git repos (the user's TD project). After changes are verified working, automatically `git add` + `git commit` + `git push` in that external repo so it stays in sync. Do not ask — just do it as part of the workflow.
