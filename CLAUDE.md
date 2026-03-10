@@ -44,7 +44,8 @@ td-setup/callbacks.py — Paste into TD's Text DAT
 ```
 
 ## Rules
-- All communication is localhost TCP on port 7000
+- All communication is localhost TCP (default port 7000, but the user may change it per scene)
+- **Before connecting or making any changes, always ask the user which port and which TD scene they're working in.** Multiple scenes may be open at once, each on a different port.
 - TD must have the TCP/IP DAT running in Server mode before the agent can connect
 - GLSL TOPs reference shader code via Text DATs or File In DATs, not direct file paths
 - **Prefer file-based workflow**: use `setup_shader()` to create local files with TD sync, so all code lives in Git
